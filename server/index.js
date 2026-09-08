@@ -1,8 +1,14 @@
 import http from 'node:http';
+import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Store} from './store.js';
+if (process.env.DATABASE_URL) {
+ const {startBusiness}=await import('./business.js');
+ await startBusiness();
+} else {
+ if(process.env.ALLOW_LEGACY_DEV !== '1')throw Error('DATABASE_URL required; legacy JSON service is development-only');
 const root=path.dirname(fileURLToPath(import.meta.url));
 const store=new Store(process.env.DATA_DIR||path.join(root,'../data')); const sessions=new Map();
 const json=(res,status,data)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*'});res.end(JSON.stringify(data));};
@@ -23,3 +29,5 @@ const routes={
 };
 const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS')return json(res,204,{});const key=req.method+' '+req.url.split('?')[0];if(routes[key])return await routes[key](req,res);if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){res.writeHead(200,{'content-type':'text/html'});return res.end(fs.readFileSync(path.join(root,'../web/index.html')))}json(res,404,{error:'not found'})}catch(e){json(res,500,{error:'internal error'})}});
 const port=Number(process.env.PORT||8080);server.listen(port,()=>console.log(`IM API listening on http://127.0.0.1:${port}`));
+
+}

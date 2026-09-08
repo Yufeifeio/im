@@ -74,6 +74,38 @@ try {
  assert(b.data.filter(d=>d.content==='persistent message '+suffix).length>=2);
  const c=await connect();
  try { await c.send('login',{scheme:'token',secret:a.token}); } finally {c.ws.close()}
+ if (process.env.BUSINESS_TEST === '1') {
+  const api=process.env.BUSINESS_URL||'http://127.0.0.1:8080';
+  const headers={Authorization:'Bearer '+a.token};
+  assert.equal((await fetch(api+'/api/checkin/status')).status,401);
+  const responses=await Promise.all(Array.from({length:20},()=>fetch(api+'/api/checkin',{method:'POST',headers}).then(async r=>{assert.equal(r.status,200);return r.json()})));
+  assert.equal(responses.filter(r=>!r.alreadyCheckedIn).length,1);
+  const status=await fetch(api+'/api/checkin/status',{headers}).then(r=>r.json());
+  assert.equal(status.total,1);assert.equal(status.streak,1);assert.equal(status.records.length,1);
+  assert.equal(status.membership.code,'ordinary');
+  const other=await fetch(api+'/api/checkin/status',{headers:{Authorization:'Bearer '+b.token}}).then(r=>r.json());
+  assert.equal(other.total,0);
+  if(process.env.DATABASE_URL){
+   const {default:pg}=await import('pg');const db=new pg.Client({connectionString:process.env.DATABASE_URL});await db.connect();
+   const code='test-'+suffix;
+   try {
+    const {rows:[user]}=await db.query('SELECT id FROM business_users WHERE tinode_uid=$1',[a.uid]);
+    const {rows:[ledger]}=await db.query('SELECT count(*)::int AS count FROM reward_ledger WHERE user_id=$1',[user.id]);
+    assert.equal(ledger.count,1);
+    await db.query('INSERT INTO membership_levels VALUES($1,$2,100)',[code,'测试会员']);
+    await db.query("INSERT INTO memberships VALUES($1,$2,now()-interval '1 day',now()+interval '1 day',true)",[user.id,code]);
+    let member=await fetch(api+'/api/membership',{headers}).then(r=>r.json());assert.equal(member.code,code);
+    await db.query("UPDATE memberships SET expires_at=now()-interval '1 second' WHERE user_id=$1",[user.id]);
+    member=await fetch(api+'/api/membership',{headers}).then(r=>r.json());assert.equal(member.code,'ordinary');
+    const {rows:[reward]}=await db.query('SELECT reward_units,level_code FROM checkins WHERE user_id=$1',[user.id]);
+    assert.equal(reward.reward_units,'10');assert.equal(reward.level_code,'ordinary');
+    console.log('PASS: exactly one reward ledger, membership activation/expiry and immutable reward snapshot');
+   } finally {
+    await db.query('DELETE FROM memberships WHERE level_code=$1',[code]);await db.query('DELETE FROM membership_levels WHERE code=$1',[code]);await db.end();
+   }
+  }
+  console.log('PASS: shared identity, unauthorized rejection, 20 concurrent check-ins award once, user isolation');
+ }
  if (process.env.BROWSER_TEST === '1') {
   const {chromium}=await import('playwright');
   const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox']});
@@ -91,11 +123,34 @@ try {
    assert(!/tinode|github\.com/i.test(await page.locator('body').innerText()));
    assert.deepEqual(errors,[]);
    console.log('PASS: Chromium real user login');
+   if(process.env.BUSINESS_TEST==='1'){
+    await page.getByRole('button',{name:'签到与会员',exact:true}).click();
+    await page.getByRole('heading',{name:'每日签到',exact:true}).waitFor();
+    await page.getByRole('button',{name:'今日已签到',exact:true}).waitFor();
+    await page.getByRole('button',{name:'返回聊天',exact:true}).click();
+    await page.getByRole('dialog').waitFor({state:'hidden'});
+    console.log('PASS: signed-in business panel, persisted check-in and return to chat');
+   }
   } finally {await browser.close()}
  }
  console.log('PASS: registration, private chat, two-device delivery, group permissions, authenticated file upload/download, history reload and token login');
  await a.send('del',{what:'topic',topic,hard:true});
 } finally {
+ if(process.env.DATABASE_URL && process.env.BUSINESS_TEST==='1'){
+  const {default:pg}=await import('pg');const db=new pg.Client({connectionString:process.env.DATABASE_URL});await db.connect();
+  try {
+   await db.query('BEGIN');
+   const {rows}=await db.query('SELECT id FROM business_users WHERE tinode_uid=ANY($1)',[[a.uid,b.uid]]);
+   for(const {id} of rows){
+    await db.query('DELETE FROM reward_ledger WHERE user_id=$1',[id]);
+    await db.query('DELETE FROM checkins WHERE user_id=$1',[id]);
+    await db.query('DELETE FROM business_audit WHERE actor=$1',[id]);
+    await db.query('DELETE FROM memberships WHERE user_id=$1',[id]);
+    await db.query('DELETE FROM business_users WHERE id=$1',[id]);
+   }
+   await db.query('COMMIT');
+  } catch(e){await db.query('ROLLBACK');throw e}finally{await db.end()}
+ }
  // Only delete accounts created by this test, including assertion failure paths.
  for (const c of [b,a]) {
   if (c.uid && c.ws.readyState === WebSocket.OPEN) {

@@ -1,6 +1,6 @@
 # IM System
 
-基于 Tinode 协议兼容方向的 IM 业务扩展服务，当前包含可运行的业务 API 骨架：账号、签到、商城商品/订单、会员数据结构预留及多人会议记录/在线参会统计。数据以 `data/state.json` 持久化，适用于隔离开发环境；正式环境接入 PostgreSQL、Tinode 和 LiveKit 前需配置对应服务。
+自有品牌 IM 系统。生产业务 API 使用 PostgreSQL 持久化，并通过统一登录会话连接聊天服务；当前已交付真实 Web 聊天基线、签到与会员流程。商城、会议和管理后台仍按后续阶段实施，未完成部分不会返回伪造成功结果。
 
 ## 启动
 
@@ -8,7 +8,7 @@
 node server/index.js
 ```
 
-默认监听 `http://127.0.0.1:8080`，可通过 `PORT`、`DATA_DIR`、`BUSINESS_TIMEZONE` 配置。接口使用 `Authorization: Bearer TOKEN`。
+默认监听 `http://127.0.0.1:8080`，生产需设置 `DATABASE_URL`、`TINODE_PUBLIC_APP_KEY` 和 `BUSINESS_TIMEZONE`（参见 `.env.example`）。接口使用 `Authorization: Bearer TOKEN`。未设置数据库时仅允许显式 `ALLOW_LEGACY_DEV=1` 启动开发兼容模式。
 
 ## 版本与后续集成
 

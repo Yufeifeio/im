@@ -1,0 +1,13 @@
+[Unit]
+Description=IM PostgreSQL business API
+After=postgresql.service im-chat.service
+[Service]
+WorkingDirectory=/www/wwwroot/github/im
+EnvironmentFile=/www/wwwroot/github/im/.runtime/business.env
+ExecStart=/usr/bin/node /www/wwwroot/github/im/server/index.js
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+[Install]
+WantedBy=multi-user.target

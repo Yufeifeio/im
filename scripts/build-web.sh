@@ -16,6 +16,16 @@ s=p.read_text().replace("host = window.location.hostname + (window.location.port
 p.write_text(s)
 PY
 python3 scripts/brand-web.py
+cp web/business-panel.jsx third_party/webapp/src/views/business-panel.jsx
+python3 - <<'PYHOOK'
+from pathlib import Path
+p=Path('third_party/webapp/src/views/tinode-web.jsx')
+s=p.read_text()
+if "import BusinessPanel from './business-panel.jsx';" not in s:
+ s="import BusinessPanel from './business-panel.jsx';\n"+s
+ s=s.replace('<div id="app-container" ref={this.selfRef}>','<div id="app-container" ref={this.selfRef}>\n        {this.state.myUserId && !this.state.topicSelected ? <BusinessPanel key={this.state.myUserId} tinode={this.tinode} /> : null}')
+p.write_text(s)
+PYHOOK
 cd third_party/webapp
 npm ci --ignore-scripts --no-audit --no-fund
 npm run vers
