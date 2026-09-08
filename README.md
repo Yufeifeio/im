@@ -80,7 +80,7 @@ scripts/brand-web.py 在官方源码构建时应用 IM 名称、图标、标题�
 正式品牌名称/Logo、客服地址和法律条款尚待提供；支持页入口暂禁用并明确说明。
 浏览器已验证登录前后无上游品牌及仓库链接，另已验证断开连接后的历史补拉。
 
-## 原生客户端（构建中，尚未验收）
+## 原生客户端（Android 调试构建通过，设备验收未完成）
 Android 固定 v0.25.0，iOS 固定最新可用稳定标签 v1.24.4（上游自述仍为 beta），
 具体 commit 记录在 third_party/*.version。保留官方 Gradle/Xcode 工程与 Apache 许可证，
 通过 scripts/fetch-upstream.sh 恢复源码，不采用 WebView 套壳。
@@ -96,9 +96,27 @@ Android 环境：JDK 21、Gradle wrapper 8.13、AGP 8.13.2、API 36；
 SDK 安装在 /opt/im-android-sdk。
 ANDROID_HOME=/opt/im-android-sdk JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 bash scripts/build-android.sh
 产物位置：third_party/android/app/build/outputs/（仅构建成功后存在）。
-当前还没有确认 APK/AAB 构建通过或设备登录，不作为 App 已交付。
+Android APK/AAB 调试构建已通过；设备登录尚未验证，不作为原生功能完整交付。
 
 iOS：在 macOS 上安装 Xcode、按 Podfile.lock 安装 CocoaPods 依赖，
 执行 scripts/build-ios.sh 进行无签名模拟器编译。
 当前 Linux 主机没有 Xcode，尚未执行此编译，也未验证与 0.25 服务端的端到端兼容性。
 待提供 macOS 构建环境、Apple Team/签名、推送配置和可用设备。
+
+### Android 构建验证
+执行 scripts/build-android.sh 已通过 assembleDebug、bundleDebug、
+tinodesdk:testDebugUnitTest 和 app:testDebugUnitTest。
+实际 57 项单元测试、0 失败、0 错误；测试结果位于上游各模块 build/test-results，
+无需额外复制报告。scripts/verify-android.sh 校验 APK v2 签名、manifest、
+AAB 完整性并打印 SHA-256。
+
+产物保留在原生工程标准 outputs 目录，不提交二进制到 Git：
+- third_party/android/app/build/outputs/apk/debug/app-debug.apk
+- third_party/android/app/build/outputs/bundle/debug/app-debug.aab
+
+显示名称 IM，最低 Android API 27，target API 36。
+仍为调试签名及上游开发包名，不是商店发布包；App 内所有品牌细节尚需设备巡检。
+adb devices 未检测到设备，主机没有 /dev/kvm，未进行安装或模拟器运行验收。
+macOS/Xcode、Apple 签名、Firebase 项目和推送配置仍未提供。
+其他开发机可通过 TINODE_PUBLIC_APP_KEY 传入非管理员应用标识，
+配置脚本验证标识格式及非管理员位；不需要复制服务端私有配置到开发机。

@@ -2,8 +2,13 @@
 """Configure pinned native clients; public app key only, never an admin secret."""
 from pathlib import Path
 import re
+import os
+import base64
 root=Path(__file__).resolve().parent.parent
-key=(root/'.runtime/client-key').read_text().strip()
+key=os.environ.get('TINODE_PUBLIC_APP_KEY') or (root/'.runtime/client-key').read_text().strip()
+raw=base64.urlsafe_b64decode(key)
+if len(raw) != 24 or raw[0] != 1 or raw[7] != 0:
+    raise SystemExit('Expected a non-admin public application key.')
 android=root/'third_party/android'
 p=android/'app/src/main/java/co/tinode/tindroid/Cache.java'
 s=p.read_text();s=re.sub(r'private static final String API_KEY = "[^"]+";',f'private static final String API_KEY = "{key}";',s);p.write_text(s)
