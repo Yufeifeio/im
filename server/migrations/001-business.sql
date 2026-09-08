@@ -44,4 +44,7 @@ CREATE TABLE IF NOT EXISTS business_audit (
  actor uuid REFERENCES business_users(id), action text NOT NULL,
  details jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS products (id BIGSERIAL PRIMARY KEY,name TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',price NUMERIC(20,2) NOT NULL CHECK(price>=0),stock INTEGER NOT NULL DEFAULT 0 CHECK(stock>=0),active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS orders (id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES business_users(id),product_id BIGINT NOT NULL REFERENCES products(id),amount NUMERIC(20,2) NOT NULL, status TEXT NOT NULL DEFAULT 'pending',created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS orders_user_idx ON orders(user_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS business_audit_actor_date ON business_audit(actor,created_at DESC);

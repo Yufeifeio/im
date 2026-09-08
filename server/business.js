@@ -74,6 +74,7 @@ async function summary(client,user) {
  return {today:rule.today,checkedIn:rows.some(r=>r.date===rule.today),total:count.total,streak,records:rows,rule,membership:await membership(client,user)};
 }
 function respond(res,status,data){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(data))}
+function readBody(req){return new Promise((resolve,reject)=>{let s='';req.on('data',c=>{s+=c;if(s.length>65536)reject(failure(413,'请求过大'))});req.on('end',()=>{try{resolve(s?JSON.parse(s):{})}catch{reject(failure(400,'请求格式错误'))}});req.on('error',reject)})}
 export async function startBusiness() {
  if(!appKey)throw Error('TINODE_PUBLIC_APP_KEY is required');
  await migrate();
@@ -81,13 +82,15 @@ export async function startBusiness() {
   const path=new URL(req.url,'http://localhost').pathname;
   try {
    if(path==='/api/health' && req.method==='GET'){await pool.query('SELECT 1');return respond(res,200,{status:'ok'})}
-   if(!['GET /api/checkin/status','POST /api/checkin','GET /api/membership'].includes(req.method+' '+path))return respond(res,404,{error:'接口尚未开放'});
+   if(path==='/api/products'&&req.method==='GET'){return respond(res,200,{items:(await pool.query('SELECT * FROM products WHERE active ORDER BY id')).rows})}
+   if(!['GET /api/checkin/status','POST /api/checkin','GET /api/membership','GET /api/products','POST /api/orders','GET /api/orders'].includes(req.method+' '+path))return respond(res,404,{error:'接口尚未开放'});
    const uid=await verifyIdentity((req.headers.authorization||'').replace(/^Bearer /,''));
    const {rows:[user]}=await pool.query(`INSERT INTO business_users(tinode_uid) VALUES($1)
    ON CONFLICT(tinode_uid) DO UPDATE SET tinode_uid=excluded.tinode_uid RETURNING id`,[uid]);
    const client=await pool.connect();
    try {
-    const data=req.method==='POST'?await checkin(client,user.id):path==='/api/membership'?await membership(client,user.id):await summary(client,user.id);
+    let data;
+    if(path==='/api/checkin/status') data=await summary(client,user.id); else if(path==='/api/membership') data=await membership(client,user.id); else if(path==='/api/products') data={items:(await client.query('SELECT * FROM products WHERE active ORDER BY id')).rows}; else if(path==='/api/orders'&&req.method==='GET') data={items:(await client.query('SELECT o.*,p.name FROM orders o JOIN products p ON p.id=o.product_id WHERE o.user_id=$1 ORDER BY o.created_at DESC',[user.id])).rows}; else if(path==='/api/orders'){const b=await readBody(req); await client.query('BEGIN'); const p=(await client.query('SELECT * FROM products WHERE id=$1 AND active FOR UPDATE',[b.productId])).rows[0]; if(!p||p.stock<1) throw failure(409,'商品库存不足'); const o=(await client.query('INSERT INTO orders(user_id,product_id,amount) VALUES($1,$2,$3) RETURNING *',[user.id,p.id,p.price])).rows[0]; await client.query('UPDATE products SET stock=stock-1 WHERE id=$1',[p.id]); await client.query('COMMIT'); data=o;} else data=await checkin(client,user.id);
     respond(res,200,data);
    } finally {client.release()}
   } catch(e) {if(!e.status)console.error('Business request failed:',e.code||e.name);respond(res,e.status||500,{error:e.status?e.message:'服务暂时异常，请稍后重试'})}
