@@ -79,3 +79,26 @@ scripts/brand-web.py 在官方源码构建时应用 IM 名称、图标、标题�
 用户页面不展示上游品牌、SDK 版本或仓库链接；源码许可证、版权和内部协议标识保留。
 正式品牌名称/Logo、客服地址和法律条款尚待提供；支持页入口暂禁用并明确说明。
 浏览器已验证登录前后无上游品牌及仓库链接，另已验证断开连接后的历史补拉。
+
+## 原生客户端（构建中，尚未验收）
+Android 固定 v0.25.0，iOS 固定最新可用稳定标签 v1.24.4（上游自述仍为 beta），
+具体 commit 记录在 third_party/*.version。保留官方 Gradle/Xcode 工程与 Apache 许可证，
+通过 scripts/fetch-upstream.sh 恢复源码，不采用 WebView 套壳。
+
+scripts/configure-native.py 配置非管理权限的公开 app key、api.cyfljj.com 和 TLS，
+可重复执行。客户端不存在数据库或媒体管理密钥。
+Android 修复上游 MaxPermSize 参数和强制读取 release keystore 的问题；
+无 Firebase 配置时明确禁用相关构建任务，并防止访问未初始化 Firebase。
+这不等于推送功能可用。生产签名文件尚未配置，包名/App Group 等保留原工程值，
+正式发布前需要确认并统一修改标识与签名。
+
+Android 环境：JDK 21、Gradle wrapper 8.13、AGP 8.13.2、API 36；
+SDK 安装在 /opt/im-android-sdk。
+ANDROID_HOME=/opt/im-android-sdk JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 bash scripts/build-android.sh
+产物位置：third_party/android/app/build/outputs/（仅构建成功后存在）。
+当前还没有确认 APK/AAB 构建通过或设备登录，不作为 App 已交付。
+
+iOS：在 macOS 上安装 Xcode、按 Podfile.lock 安装 CocoaPods 依赖，
+执行 scripts/build-ios.sh 进行无签名模拟器编译。
+当前 Linux 主机没有 Xcode，尚未执行此编译，也未验证与 0.25 服务端的端到端兼容性。
+待提供 macOS 构建环境、Apple Team/签名、推送配置和可用设备。

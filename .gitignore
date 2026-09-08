@@ -9,3 +9,6 @@ bin/
 
 .runtime/
 third_party/webapp/
+
+third_party/android/
+third_party/ios/

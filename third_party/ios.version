@@ -1,0 +1,4 @@
+repository=https://github.com/tinode/ios.git
+ref=v1.24.4
+commit=a4db1251549c40b7aa4f269cd79234eb4c07baff
+license=Apache-2.0

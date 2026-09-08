@@ -1,0 +1,4 @@
+repository=https://github.com/tinode/tindroid.git
+ref=v0.25.0
+commit=75408ad660748c67c9b396cd1200ec6f2fa9ed86
+license=Apache-2.0
