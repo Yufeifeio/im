@@ -1,0 +1,12 @@
+[Unit]
+Description=IM Tinode PostgreSQL chat
+After=postgresql.service network.target
+[Service]
+WorkingDirectory=/www/wwwroot/github/im
+ExecStart=/www/wwwroot/github/im/bin/tinode -config=/www/wwwroot/github/im/.runtime/tinode.json -static_data=/www/wwwroot/github/im/.runtime/web
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target

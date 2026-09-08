@@ -1,0 +1,4 @@
+repository=https://github.com/tinode/webapp.git
+ref=v0.25.0
+commit=b2bae67ed2e7166ff8794f8a48bb10e33745e651
+license=Apache-2.0

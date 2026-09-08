@@ -6,3 +6,6 @@ third_party/tinode/
 
 config.tinode*.conf
 bin/
+
+.runtime/
+third_party/webapp/
