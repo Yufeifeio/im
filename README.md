@@ -15,3 +15,13 @@ node server/index.js
 - Node.js 20+
 - Tinode 服务端/客户端、LiveKit 版本在接入前固定并记录；本仓库保留独立业务边界，不修改 Tinode 内部数据库。
 - Android/iOS 原生工程、推送、签名及真机验收需在确定客户端交付端和证书资料后接入。
+
+## Tinode 本地联调
+
+已固定 Tinode `v0.25.0`（commit `6547a66c4dbb0cb4c017588c95183e96168ffa03`）。配置文件使用环境变量替换生产凭据；`config.tinode*.conf` 为本机联调配置，不得复制到生产。
+
+```bash
+./scripts/setup-services.sh
+./bin/tinode-db --config=./config.tinode-db.conf
+./bin/tinode --config=./config.tinode.conf
+```
