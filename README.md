@@ -25,3 +25,12 @@ node server/index.js
 ./bin/tinode-db --config=./config.tinode-db.conf
 ./bin/tinode --config=./config.tinode.conf
 ```
+
+## HTTPS 入口
+域名：im.cyfljj.com、api.cyfljj.com、rtc.cyfljj.com。
+独立 Nginx 配置为 deploy/nginx.conf，避免启动或覆盖其他站点。
+证书由 Certbot 保存在 /etc/letsencrypt/live/im-cyfljj-com/，私钥不进入仓库。
+HTTP 除 ACME 验证路径外返回 308 跳转 HTTPS。续期采用 /var/lib/im-acme
+webroot，续期成功后重新加载独立 Nginx。
+当前三个 HTTPS 入口有意返回 503 service_not_ready；这是未完成业务联调的真实状态，
+不是可交付聊天或会议服务。接入真实客户端和安全审查后再配置代理。

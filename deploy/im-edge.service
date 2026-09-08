@@ -1,0 +1,13 @@
+[Unit]
+Description=IM isolated HTTPS ingress
+After=network.target
+[Service]
+Type=forking
+PIDFile=/run/im-nginx.pid
+ExecStartPre=/www/server/nginx/sbin/nginx -t -c /www/wwwroot/github/im/deploy/nginx.conf
+ExecStart=/www/server/nginx/sbin/nginx -c /www/wwwroot/github/im/deploy/nginx.conf
+ExecReload=/www/server/nginx/sbin/nginx -s reload -c /www/wwwroot/github/im/deploy/nginx.conf
+ExecStop=/www/server/nginx/sbin/nginx -s quit -c /www/wwwroot/github/im/deploy/nginx.conf
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
