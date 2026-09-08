@@ -83,7 +83,8 @@ export async function startBusiness() {
   try {
    if(path==='/api/health' && req.method==='GET'){await pool.query('SELECT 1');return respond(res,200,{status:'ok'})}
    if(path==='/api/products'&&req.method==='GET'){return respond(res,200,{items:(await pool.query('SELECT * FROM products WHERE active ORDER BY id')).rows})}
-   if(!['GET /api/checkin/status','POST /api/checkin','GET /api/membership','GET /api/products','POST /api/orders','GET /api/orders'].includes(req.method+' '+path))return respond(res,404,{error:'接口尚未开放'});
+   if(path.startsWith('/api/products/')&&req.method==='GET'){const id=path.split('/').pop();const row=(await pool.query('SELECT * FROM products WHERE id=$1 AND active',[id])).rows[0];return row?respond(res,200,row):respond(res,404,{error:'商品不存在'})}
+   if(!['GET /api/checkin/status','POST /api/checkin','GET /api/membership','GET /api/products','POST /api/orders','GET /api/orders'].includes(req.method+' '+path) && !(req.method==='GET'&&path.startsWith('/api/products/')))return respond(res,404,{error:'接口尚未开放'});
    const uid=await verifyIdentity((req.headers.authorization||'').replace(/^Bearer /,''));
    const {rows:[user]}=await pool.query(`INSERT INTO business_users(tinode_uid) VALUES($1)
    ON CONFLICT(tinode_uid) DO UPDATE SET tinode_uid=excluded.tinode_uid RETURNING id`,[uid]);
