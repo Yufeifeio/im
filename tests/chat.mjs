@@ -31,6 +31,17 @@ try {
   assert(b.data.some(d=>d.content==='private '+suffix));
   assert(multi.data.some(d=>d.content==='private '+suffix));
  } finally {multi.ws.close()}
+ // Disconnected recipient must receive history on a fresh authenticated connection.
+ await b.send('leave',{topic:a.uid});
+ b.ws.close();
+ await a.send('pub',{topic:b.uid,content:'offline '+suffix});
+ const recovered=await connect();
+ await recovered.send('login',{scheme:'token',secret:b.token});
+ recovered.uid=b.uid; recovered.token=b.token;
+ Object.assign(b,recovered);
+ await b.send('sub',{topic:a.uid,get:{what:'data',data:{limit:10}}});
+ await new Promise(r=>setTimeout(r,300));
+ assert(b.data.some(d=>d.content==='offline '+suffix));
  // Actual multipart upload and authenticated download, not a mock URL.
  const http=(process.env.CHAT_WS||'ws://127.0.0.1:6060/v0/channels').replace(/^ws/,'http').replace('/v0/channels','');
  const headers={'X-Tinode-APIKey':key,Authorization:'Token '+a.token,Origin:'https://im.cyfljj.com'};
@@ -70,10 +81,14 @@ try {
    const page=await browser.newPage({locale:'en-US'});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto('https://im.cyfljj.com',{waitUntil:'domcontentloaded'});
+   assert(!/tinode|github\.com/i.test(await page.locator('body').innerText()));
+   assert.equal(await page.title(),'IM');
+   assert.equal(await page.locator('a[href*="github.com"]').count(),0);
    await page.getByPlaceholder('Login',{exact:true}).fill(a.username);
    await page.getByPlaceholder('Password',{exact:true}).fill(a.password);
    await page.locator('#login-form button[type=submit]').click();
    await page.getByPlaceholder('Login',{exact:true}).waitFor({state:'hidden',timeout:15000});
+   assert(!/tinode|github\.com/i.test(await page.locator('body').innerText()));
    assert.deepEqual(errors,[]);
    console.log('PASS: Chromium real user login');
   } finally {await browser.close()}

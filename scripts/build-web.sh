@@ -15,6 +15,7 @@ p=Path('third_party/webapp/src/lib/host-name.js')
 s=p.read_text().replace("host = window.location.hostname + (window.location.port ? ':' + window.location.port : '');", "host = DEFAULT_HOST;")
 p.write_text(s)
 PY
+python3 scripts/brand-web.py
 cd third_party/webapp
 npm ci --ignore-scripts --no-audit --no-fund
 npm run vers
