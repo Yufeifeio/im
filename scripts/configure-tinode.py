@@ -16,6 +16,7 @@ subprocess.run(['runuser','-u','postgres','--','psql','-v','ON_ERROR_STOP=1','-d
 salt = secrets.token_bytes(32)
 b64 = lambda n: base64.b64encode(secrets.token_bytes(n)).decode()
 cfg = dict(push=[],listen='127.0.0.1:6060',grpc_listen='',static_mount='/',api_key_salt=base64.b64encode(salt).decode(),max_message_size=131072,max_subscriber_count=128,expvar='-',auth_config={'basic':{'add_to_tags':True,'min_login_length':4,'min_password_length':12},'token':{'expire_in':86400,'serial_num':1,'key':b64(32)}},store_config={'uid_key':b64(16),'use_adapter':'postgres','adapters':{'postgres':{'User':'tinode','Passwd':password,'Host':'127.0.0.1','Port':'5432','DBName':'tinode','SSLMode':'disable','max_open_conns':20,'max_idle_conns':5}}})
+cfg['media'] = {'use_handler': 'fs', 'max_size': 8388608, 'gc_period': 60, 'gc_block_size': 100, 'handlers': {'fs': {'upload_dir': '/www/wwwroot/github/im/.runtime/uploads', 'cors_origins': ['https://im.cyfljj.com']}}}
 config.write_text(json.dumps(cfg,indent=2))
 config.chmod(0o600)
 header = bytes([1,0,0,0,0,1,0,0])

@@ -60,3 +60,16 @@ CHAT_WS=wss://api.cyfljj.com/v0/channels node --use-system-ca tests/chat.mjs
 测试实际创建随机账号、建群、邀请、投递、补拉和 Token 登录，并删除自己的测试数据。
 已验证协议与 HTTPS 路径；浏览器操作回归、私聊、文件、语音、推送、密码找回、
 原生客户端及容量验收仍待完成。不以 HTTP 200 代替功能验收。
+
+### 聊天回归更新
+现已验证私聊、同账号双连接消息同步、普通群成员提权被拒绝、
+真实文件上传和鉴权下载、HTTPS 跨域，以及 Chromium 实际账号登录。
+官方 Web 的域名自动检测已在构建脚本中修正为 api.cyfljj.com。
+文件接口 /v0/file/ 通过 HTTPS 代理，文件保存于私有 .runtime/uploads；
+未登录下载返回 401。上传限制 8 MiB，未接入对象存储。
+
+浏览器测试（使用已安装 Chrome，或先执行 npx playwright install chromium）：
+BROWSER_TEST=1 CHROMIUM_PATH=/path/to/chrome CHAT_WS=wss://api.cyfljj.com/v0/channels node --use-system-ca tests/chat.mjs
+Playwright 固定为开发依赖，不进入客户端包。测试未禁用 TLS 校验。
+仍未验收：图像/语音 UI 操作、离线长时间恢复、服务重启持久性、多端在线统计、
+移动原生客户端及目标容量。媒体下载采用上游登录鉴权语义，不宣称额外的逐会话附件 ACL。

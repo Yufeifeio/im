@@ -15,13 +15,45 @@ const a=await connect(), b=await connect();
 try {
  const suffix=randomBytes(6).toString('hex');
  for (const [c,n] of [[a,'a'],[b,'b']]) {
-  const r=await c.send('acc',{user:'new',scheme:'basic',secret:Buffer.from('test'+n+suffix+':'+randomBytes(16).toString('hex')).toString('base64'),login:true,desc:{public:{fn:'Integration '+n}}});
+  c.username='test'+n+suffix; c.password=randomBytes(16).toString('hex');
+  const r=await c.send('acc',{user:'new',scheme:'basic',secret:Buffer.from(c.username+':'+c.password).toString('base64'),login:true,desc:{public:{fn:'Integration '+n}}});
   c.uid=r.params.user; c.token=r.params.token;
  }
+ // Verify private messages and a second device using the same identity.
+ await a.send('sub',{topic:b.uid});
+ await b.send('sub',{topic:a.uid});
+ const multi=await connect();
+ try {
+  await multi.send('login',{scheme:'token',secret:b.token});
+  await multi.send('sub',{topic:a.uid});
+  await a.send('pub',{topic:b.uid,content:'private '+suffix});
+  await new Promise(r=>setTimeout(r,300));
+  assert(b.data.some(d=>d.content==='private '+suffix));
+  assert(multi.data.some(d=>d.content==='private '+suffix));
+ } finally {multi.ws.close()}
+ // Actual multipart upload and authenticated download, not a mock URL.
+ const http=(process.env.CHAT_WS||'ws://127.0.0.1:6060/v0/channels').replace(/^ws/,'http').replace('/v0/channels','');
+ const headers={'X-Tinode-APIKey':key,Authorization:'Token '+a.token,Origin:'https://im.cyfljj.com'};
+ const form=new FormData();
+ const contents='IM file '+suffix;
+ form.append('file',new Blob([contents],{type:'text/plain'}),'integration.txt');
+ const uploaded=await fetch(http+'/v0/file/u/',{method:'POST',headers,body:form});
+ assert.equal(uploaded.status,200,await uploaded.clone().text());
+ if (process.env.CHAT_WS) assert.equal(uploaded.headers.get('access-control-allow-origin'),'https://im.cyfljj.com');
+ const upload=await uploaded.json();
+ const url=upload.ctrl.params.url;
+ const downloaded=await fetch(new URL(url,http),{headers});
+ assert.equal(downloaded.status,200);
+ assert.equal(await downloaded.text(),contents);
+ const denied=await fetch(new URL(url,http),{headers:{'X-Tinode-APIKey':key}});
+ assert.equal(denied.status,401);
+ await a.send('pub',{topic:b.uid,content:'file '+url,extra:{attachments:[url]}});
  const g=await a.send('sub',{topic:'new',set:{desc:{public:{fn:'Integration group'}}}});
  const topic=g.topic;
  await a.send('set',{topic,sub:{user:b.uid,mode:'JRWPS'}});
  await b.send('sub',{topic});
+ // Ordinary member must not promote itself to owner.
+ await assert.rejects(b.send('set',{topic,sub:{user:b.uid,mode:'JRWPSAO'}}), /403/);
  await a.send('pub',{topic,content:'persistent message '+suffix});
  await new Promise(r=>setTimeout(r,300));
  assert(b.data.some(d=>d.content==='persistent message '+suffix));
@@ -31,8 +63,30 @@ try {
  assert(b.data.filter(d=>d.content==='persistent message '+suffix).length>=2);
  const c=await connect();
  try { await c.send('login',{scheme:'token',secret:a.token}); } finally {c.ws.close()}
- console.log('PASS: real registration, group membership, delivery, history reload and token login');
+ if (process.env.BROWSER_TEST === '1') {
+  const {chromium}=await import('playwright');
+  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox']});
+  try {
+   const page=await browser.newPage({locale:'en-US'});
+   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+   await page.goto('https://im.cyfljj.com',{waitUntil:'domcontentloaded'});
+   await page.getByPlaceholder('Login',{exact:true}).fill(a.username);
+   await page.getByPlaceholder('Password',{exact:true}).fill(a.password);
+   await page.locator('#login-form button[type=submit]').click();
+   await page.getByPlaceholder('Login',{exact:true}).waitFor({state:'hidden',timeout:15000});
+   assert.deepEqual(errors,[]);
+   console.log('PASS: Chromium real user login');
+  } finally {await browser.close()}
+ }
+ console.log('PASS: registration, private chat, two-device delivery, group permissions, authenticated file upload/download, history reload and token login');
  await a.send('del',{what:'topic',topic,hard:true});
- await b.send('del',{what:'user',hard:true});
- await a.send('del',{what:'user',hard:true});
-} finally {a.ws.close();b.ws.close()}
+} finally {
+ // Only delete accounts created by this test, including assertion failure paths.
+ for (const c of [b,a]) {
+  if (c.uid && c.ws.readyState === WebSocket.OPEN) {
+   try {await c.send('del',{what:'user',hard:true})}
+   catch (e) {console.error('Test account cleanup failed:',c.uid,e.message)}
+  }
+  c.ws.close();
+ }
+}

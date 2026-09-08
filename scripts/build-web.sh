@@ -11,6 +11,9 @@ s=re.sub(r"export const API_KEY = .*;", "export const API_KEY = '"+Path('.runtim
 s=re.sub(r"export const KNOWN_HOSTS = .*;", "export const KNOWN_HOSTS = {hosted: 'api.cyfljj.com', local: 'api.cyfljj.com'};",s)
 s=s.replace('export const LOGGING_ENABLED = true;', 'export const LOGGING_ENABLED = false;')
 p.write_text(s)
+p=Path('third_party/webapp/src/lib/host-name.js')
+s=p.read_text().replace("host = window.location.hostname + (window.location.port ? ':' + window.location.port : '');", "host = DEFAULT_HOST;")
+p.write_text(s)
 PY
 cd third_party/webapp
 npm ci --ignore-scripts --no-audit --no-fund
