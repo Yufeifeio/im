@@ -1,0 +1,4 @@
+repository=https://github.com/tinode/chat.git
+ref=v0.25.0
+commit=6547a66c4dbb0cb4c017588c95183e96168ffa03
+license=GPL-3.0-or-later
